@@ -13,6 +13,8 @@ yarn plugin import https://raw.githubusercontent.com/flocon-trpg/yarn-plugin-lic
 
 See [mhassan1/yarn-plugin-licenses](https://github.com/mhassan1/yarn-plugin-licenses/tree/f2f7f233afb4ef0f6e14dd034909f26256f395de).
 
+Not all tests passes now.
+
 ## License
 
 MIT

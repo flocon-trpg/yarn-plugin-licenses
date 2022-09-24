@@ -5,27 +5,6 @@ import NpmPlugin from '@yarnpkg/plugin-npm'
 import { pluginRootDir, getDisclaimer } from '../../utils'
 import { execSync } from 'child_process'
 
-const expectedNonRecursive = normalizeLineEndings(
-  '\n',
-  xfs.readFileSync(ppath.join(__dirname as PortablePath, 'fixtures/expected/disclaimer.txt' as PortablePath), 'utf8')
-)
-
-const expectedRecursive = normalizeLineEndings(
-  '\n',
-  xfs.readFileSync(
-    ppath.join(__dirname as PortablePath, 'fixtures/expected/disclaimerRecursive.txt' as PortablePath),
-    'utf8'
-  )
-)
-
-const expectedNonRecursiveProduction = normalizeLineEndings(
-  '\n',
-  xfs.readFileSync(
-    ppath.join(__dirname as PortablePath, 'fixtures/expected/disclaimerProduction.txt' as PortablePath),
-    'utf8'
-  )
-)
-
 const expectedRecursiveProduction = normalizeLineEndings(
   '\n',
   xfs.readFileSync(
@@ -41,24 +20,24 @@ describe.each(['pnp', 'node-modules'])('licenses generate-disclaimer (%s)', (lin
   })
 
   it('should generate disclaimer', () => {
-    const stdout = execSync('yarn licenses generate-disclaimer', {
+    const exec = () => execSync('yarn licenses generate-disclaimer', {
       cwd
-    }).toString()
-    expect(stdout).toBe(expectedNonRecursive)
+    })
+    expect(exec).toThrow()
   })
 
   it('should generate disclaimer recursively', () => {
-    const stdout = execSync('yarn licenses generate-disclaimer --recursive', {
+    const exec = () => execSync('yarn licenses generate-disclaimer --recursive', {
       cwd
-    }).toString()
-    expect(stdout).toBe(expectedRecursive)
+    })
+    expect(exec).toThrow()
   })
 
   it('should generate disclaimer for production', () => {
-    const stdout = execSync('yarn licenses generate-disclaimer --production', {
+    const exec = () => execSync('yarn licenses generate-disclaimer --production', {
       cwd
-    }).toString()
-    expect(stdout).toBe(expectedNonRecursiveProduction)
+    })
+    expect(exec).toThrow()
   })
 
   it('should generate disclaimer recursively for production', () => {
@@ -71,9 +50,6 @@ describe.each(['pnp', 'node-modules'])('licenses generate-disclaimer (%s)', (lin
 
 describe('getDisclaimer', () => {
   it.each([
-    ['non-recursively', false, false, expectedNonRecursive],
-    ['recursively', true, false, expectedRecursive],
-    ['non-recursively for production', false, true, expectedNonRecursiveProduction],
     ['recursively for production', true, true, expectedRecursiveProduction]
   ])('should generate disclaimer %s', async (description, recursive, production, expected) => {
     const cwd = ppath.join(

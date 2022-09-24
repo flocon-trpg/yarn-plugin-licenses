@@ -126,30 +126,29 @@ export const getSortedPackages = async (
 ): Promise<Map<Descriptor, Package>> => {
   const packages = new Map<Descriptor, Package>()
   let storedDescriptors: Iterable<Descriptor>
+  const packagesToSkip = new Set(['api-server', 'cache'])
   if (recursive) {
     if (production) {
       for (const workspace of project.workspaces) {
         workspace.manifest.devDependencies.clear()
-        if (workspace.manifest.name?.scope === 'flocon-trpg' && workspace.manifest.name?.name === 'api-server') {
-          workspace.manifest.dependencies.clear()
-          workspace.manifest.peerDependencies.clear()
+        if (workspace.manifest.name?.scope === 'flocon-trpg') {
+          if (packagesToSkip.delete(workspace.manifest.name.name)) {
+            workspace.manifest.dependencies.clear()
+            workspace.manifest.peerDependencies.clear()
+          }
         }
       }
       const cache = await Cache.find(project.configuration)
       await project.resolveEverything({ report: new ThrowReport(), cache })
+    } else {
+      throw new Error('--production=false is not supported.')
     }
     storedDescriptors = project.storedDescriptors.values()
   } else {
-    storedDescriptors = project.workspaces.flatMap((workspace) => {
-      const dependencies = [workspace.anchoredDescriptor]
-      for (const [identHash, dependency] of workspace.dependencies.entries()) {
-        if (production && workspace.manifest.devDependencies.has(identHash)) {
-          continue
-        }
-        dependencies.push(dependency)
-      }
-      return dependencies
-    })
+    throw new Error('--recursive=false is not supported.')
+  }
+  if (packagesToSkip.size !== 0) {
+    throw new Error('Following flocon-trpg packages are not found. Renamed or removed?: ' + JSON.stringify([...packagesToSkip]));
   }
 
   const sortedDescriptors = miscUtils.sortMap(storedDescriptors, [
