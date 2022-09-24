@@ -130,6 +130,10 @@ export const getSortedPackages = async (
     if (production) {
       for (const workspace of project.workspaces) {
         workspace.manifest.devDependencies.clear()
+        if (workspace.manifest.name?.scope === 'flocon-trpg' && workspace.manifest.name?.name === 'api-server') {
+          workspace.manifest.dependencies.clear()
+          workspace.manifest.peerDependencies.clear()
+        }
       }
       const cache = await Cache.find(project.configuration)
       await project.resolveEverything({ report: new ThrowReport(), cache })
