@@ -1,7 +1,7 @@
 import { WorkspaceRequiredError } from '@yarnpkg/cli'
 import { CommandContext, Configuration, Project } from '@yarnpkg/core'
 import { Command, Usage, Option } from 'clipanion'
-import { getDisclaimer } from '../utils'
+import { getDisclaimer, parseExcludingDependencies } from '../utils'
 
 export class LicensesGenerateDisclaimerCommand extends Command<CommandContext> {
   static paths = [[`licenses`, `generate-disclaimer`]]
@@ -12,6 +12,10 @@ export class LicensesGenerateDisclaimerCommand extends Command<CommandContext> {
 
   production = Option.Boolean(`--production`, false, {
     description: `Exclude development dependencies`
+  })
+
+  exclude = Option.String(`--exclude`, {
+    description: `Exclude specified dependencies (e.g. --exclude="eslint,@yarnpkg/core,@types/*")`
   })
 
   static usage: Usage = Command.Usage({
@@ -40,7 +44,12 @@ export class LicensesGenerateDisclaimerCommand extends Command<CommandContext> {
 
     await project.restoreInstallState()
 
-    const disclaimer = await getDisclaimer(project, this.recursive, this.production)
+    const disclaimer = await getDisclaimer(
+      project,
+      this.recursive,
+      this.production,
+      this.exclude == null ? [] : [...parseExcludingDependencies(this.exclude)]
+    )
     this.context.stdout.write(disclaimer)
   }
 }

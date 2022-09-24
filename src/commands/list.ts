@@ -1,7 +1,7 @@
 import { WorkspaceRequiredError } from '@yarnpkg/cli'
 import { CommandContext, Configuration, Project, treeUtils } from '@yarnpkg/core'
 import { Command, Usage, Option } from 'clipanion'
-import { getTree } from '../utils'
+import { getTree, parseExcludingDependencies } from '../utils'
 
 export class LicensesListCommand extends Command<CommandContext> {
   static paths = [[`licenses`, `list`]]
@@ -20,6 +20,10 @@ export class LicensesListCommand extends Command<CommandContext> {
 
   excludeMetadata = Option.Boolean(`--exclude-metadata`, false, {
     description: `Exclude dependency metadata from output`
+  })
+
+  exclude = Option.String(`--exclude`, {
+    description: `Exclude specified dependencies (e.g. --exclude="eslint,@yarnpkg/core,@types/*")`
   })
 
   static usage: Usage = Command.Usage({
@@ -48,7 +52,14 @@ export class LicensesListCommand extends Command<CommandContext> {
 
     await project.restoreInstallState()
 
-    const tree = await getTree(project, this.json, this.recursive, this.production, this.excludeMetadata)
+    const tree = await getTree(
+      project,
+      this.json,
+      this.recursive,
+      this.production,
+      this.exclude == null ? [] : [...parseExcludingDependencies(this.exclude)],
+      this.excludeMetadata
+    )
 
     treeUtils.emitTree(tree, {
       configuration,

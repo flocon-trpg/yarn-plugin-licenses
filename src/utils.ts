@@ -7,10 +7,13 @@ import {
   treeUtils,
   structUtils,
   miscUtils,
-  formatUtils
+  formatUtils,
+  IdentHash
 } from '@yarnpkg/core'
 import { PortablePath, ppath, npath, Filename } from '@yarnpkg/fslib'
 import { resolveLinker } from './linkers'
+
+const anyName = '*'
 
 /**
  * Root directory of this plugin, for use in automated tests
@@ -22,6 +25,11 @@ export const pluginRootDir: PortablePath =
     : // __dirname = `<rootDir>/src`
       ppath.join(npath.toPortablePath(__dirname), '..' as PortablePath)
 
+type PackageName = {
+  scope: string | null
+  name: string
+}
+
 /**
  * Get the license tree for a project
  *
@@ -29,6 +37,7 @@ export const pluginRootDir: PortablePath =
  * @param {boolean} json - Whether to output as JSON
  * @param {boolean} recursive - Whether to compute licenses recursively
  * @param {boolean} production - Whether to exclude devDependencies
+ * @param {object[]} excludingDependencies - Packages to exclude from generated text or tree
  * @param {boolean} excludeMetadata - Whether to exclude metadata in tree
  * @returns {treeUtils.TreeNode} Root tree node
  */
@@ -37,12 +46,13 @@ export const getTree = async (
   json: boolean,
   recursive: boolean,
   production: boolean,
+  excludingDependencies: readonly PackageName[],
   excludeMetadata: boolean
 ): Promise<treeUtils.TreeNode> => {
   const rootChildren: treeUtils.TreeMap = {}
   const root: treeUtils.TreeNode = { children: rootChildren }
 
-  const sortedPackages = await getSortedPackages(project, recursive, production)
+  const sortedPackages = await getSortedPackages(project, recursive, production, excludingDependencies)
 
   const linker = resolveLinker(project.configuration.get('nodeLinker'))
 
@@ -111,18 +121,41 @@ export const getTree = async (
   return root
 }
 
+const excludeDependencies = (
+  dependenciesMap: Map<IdentHash, Descriptor>,
+  excludingDependencies: readonly PackageName[]
+) => {
+  for (const excludingDependency of excludingDependencies) {
+    ;[...dependenciesMap]
+      .filter(([, descriptor]) => {
+        if (descriptor.scope !== excludingDependency.scope) {
+          return false
+        }
+        if (excludingDependency.name === anyName) {
+          return true
+        }
+        return descriptor.name === excludingDependency.name
+      })
+      .forEach(([hash]) => {
+        dependenciesMap.delete(hash)
+      })
+  }
+}
+
 /**
  * Get a sorted map of packages for the project
  *
  * @param {Project} project - Yarn project
  * @param {boolean} recursive - Whether to get packages recursively
  * @param {boolean} production - Whether to exclude devDependencies
+ * @param {object[]} excludingDependencies - Packages to exclude from generated text or tree
  * @returns {Promise<Map<Descriptor, Package>>} Map of packages in the project
  */
 export const getSortedPackages = async (
   project: Project,
   recursive: boolean,
-  production: boolean
+  production: boolean,
+  excludingDependencies: readonly PackageName[]
 ): Promise<Map<Descriptor, Package>> => {
   const packages = new Map<Descriptor, Package>()
   let storedDescriptors: Iterable<Descriptor>
@@ -135,6 +168,9 @@ export const getSortedPackages = async (
           if (packagesToSkip.delete(workspace.manifest.name.name)) {
             workspace.manifest.dependencies.clear()
             workspace.manifest.peerDependencies.clear()
+          } else {
+            excludeDependencies(workspace.manifest.dependencies, excludingDependencies)
+            excludeDependencies(workspace.manifest.peerDependencies, excludingDependencies)
           }
         }
       }
@@ -291,10 +327,16 @@ const stringifyKeyValue = (key: string, value: string, json: boolean) => {
  * @param {Project} project - Yarn project
  * @param {boolean} recursive - Whether to include licenses recursively
  * @param {boolean} production - Whether to exclude devDependencies
+ * @param {object[]} excludingDependencies - Packages to exclude from generated text or tree
  * @returns {string} License disclaimer
  */
-export const getDisclaimer = async (project: Project, recursive: boolean, production: boolean): Promise<string> => {
-  const sortedPackages = await getSortedPackages(project, recursive, production)
+export const getDisclaimer = async (
+  project: Project,
+  recursive: boolean,
+  production: boolean,
+  excludingDependencies: readonly PackageName[]
+): Promise<string> => {
+  const sortedPackages = await getSortedPackages(project, recursive, production, excludingDependencies)
 
   const linker = resolveLinker(project.configuration.get('nodeLinker'))
 
@@ -372,4 +414,43 @@ export const getDisclaimer = async (project: Project, recursive: boolean, produc
   }
 
   return disclaimer
+}
+
+/**
+ * @param source
+ * @example
+ * ```typescript
+ * [...parseExcludingDependencies('eslint,@yarnpkg/core,@types/*')]
+ * // => [{ scope: null, name: 'eslint' }, { scope: 'yarnpkg', name: 'core' }, { scope: 'types', name: '*' }]
+ * ```
+ */
+export function* parseExcludingDependencies(source: string): Iterable<PackageName> {
+  for (const packageString of source.split(',')) {
+    const [elem0, elem1, elem2] = packageString.trim().split('/')
+    if (elem2 != null) {
+      throw new Error(`"${packageString}" has more than one slashes.`)
+    }
+    let scope: string | null
+    let name: string
+    if (elem1 == null) {
+      scope = null
+      name = elem0
+    } else {
+      if (!elem0.startsWith('@')) {
+        throw new Error(`Scope must start with "@", but "${packageString}" does not.`)
+      }
+      scope = elem0.substring(1)
+      name = elem1
+    }
+    const invalidCharacters = /[^0-9a-zA-Z-.]/
+    if (scope != null) {
+      if (invalidCharacters.test(scope)) {
+        throw new Error(`"${packageString}" has invalid characters.`)
+      }
+    }
+    if (name !== anyName && invalidCharacters.test(name)) {
+      throw new Error(`"${packageString}" has invalid characters.`)
+    }
+    yield { scope, name }
+  }
 }

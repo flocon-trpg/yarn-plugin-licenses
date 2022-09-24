@@ -20,23 +20,26 @@ describe.each(['pnp', 'node-modules'])('licenses generate-disclaimer (%s)', (lin
   })
 
   it('should generate disclaimer', () => {
-    const exec = () => execSync('yarn licenses generate-disclaimer', {
-      cwd
-    })
+    const exec = () =>
+      execSync('yarn licenses generate-disclaimer', {
+        cwd
+      })
     expect(exec).toThrow()
   })
 
   it('should generate disclaimer recursively', () => {
-    const exec = () => execSync('yarn licenses generate-disclaimer --recursive', {
-      cwd
-    })
+    const exec = () =>
+      execSync('yarn licenses generate-disclaimer --recursive', {
+        cwd
+      })
     expect(exec).toThrow()
   })
 
   it('should generate disclaimer for production', () => {
-    const exec = () => execSync('yarn licenses generate-disclaimer --production', {
-      cwd
-    })
+    const exec = () =>
+      execSync('yarn licenses generate-disclaimer --production', {
+        cwd
+      })
     expect(exec).toThrow()
   })
 
@@ -49,30 +52,31 @@ describe.each(['pnp', 'node-modules'])('licenses generate-disclaimer (%s)', (lin
 })
 
 describe('getDisclaimer', () => {
-  it.each([
-    ['recursively for production', true, true, expectedRecursiveProduction]
-  ])('should generate disclaimer %s', async (description, recursive, production, expected) => {
-    const cwd = ppath.join(
-      pluginRootDir,
-      'src/__tests__/integration/fixtures/test-package-node-modules' as PortablePath
-    )
-    const configuration = await Configuration.find(
-      cwd,
-      {
-        modules: new Map([
-          [`@yarnpkg/plugin-pnp`, PnpPlugin],
-          [`@yarnpkg/plugin-npm`, NpmPlugin]
-        ]),
-        plugins: new Set([`@yarnpkg/plugin-pnp`, `@yarnpkg/plugin-npm`])
-      },
-      { useRc: false }
-    )
-    const { project } = await Project.find(configuration, cwd)
+  it.each([['recursively for production', true, true, expectedRecursiveProduction]])(
+    'should generate disclaimer %s',
+    async (description, recursive, production, expected) => {
+      const cwd = ppath.join(
+        pluginRootDir,
+        'src/__tests__/integration/fixtures/test-package-node-modules' as PortablePath
+      )
+      const configuration = await Configuration.find(
+        cwd,
+        {
+          modules: new Map([
+            [`@yarnpkg/plugin-pnp`, PnpPlugin],
+            [`@yarnpkg/plugin-npm`, NpmPlugin]
+          ]),
+          plugins: new Set([`@yarnpkg/plugin-pnp`, `@yarnpkg/plugin-npm`])
+        },
+        { useRc: false }
+      )
+      const { project } = await Project.find(configuration, cwd)
 
-    await project.restoreInstallState()
+      await project.restoreInstallState()
 
-    const disclaimer = await getDisclaimer(project, recursive, production)
+      const disclaimer = await getDisclaimer(project, recursive, production, [])
 
-    expect(disclaimer).toBe(expected)
-  })
+      expect(disclaimer).toBe(expected)
+    }
+  )
 })

@@ -47,16 +47,18 @@ describe.each(['pnp', 'node-modules'])('licenses list (%s)', (linker) => {
   })
 
   it('should list licenses recursively', () => {
-    const stdout = () => execSync('yarn licenses list --recursive', {
-      cwd
-    })
+    const stdout = () =>
+      execSync('yarn licenses list --recursive', {
+        cwd
+      })
     expect(stdout).toThrow()
   })
 
   it('should list licenses for production', () => {
-    const stdout = () => execSync('yarn licenses list --production', {
-      cwd
-    })
+    const stdout = () =>
+      execSync('yarn licenses list --production', {
+        cwd
+      })
     expect(stdout).toThrow()
   })
 
@@ -123,7 +125,7 @@ describe('getTree', () => {
 
     await project.restoreInstallState()
 
-    const tree = await getTree(project, false, recursive, production, excludeMetadata)
+    const tree = await getTree(project, false, recursive, production, [], excludeMetadata)
 
     let stdout = ''
     const stdoutStream = new Writable({
