@@ -130,6 +130,10 @@ export const getSortedPackages = async (
     if (production) {
       for (const workspace of project.workspaces) {
         workspace.manifest.devDependencies.clear()
+        if (workspace.manifest.name?.scope === 'flocon-trpg' && workspace.manifest.name?.name === 'api-server') {
+          workspace.manifest.dependencies.clear()
+          workspace.manifest.peerDependencies.clear()
+        }
       }
       const cache = await Cache.find(project.configuration)
       await project.resolveEverything({ report: new ThrowReport(), cache })
@@ -338,9 +342,7 @@ export const getDisclaimer = async (project: Project, recursive: boolean, produc
 
   let disclaimer =
     'THE FOLLOWING SETS FORTH ATTRIBUTION NOTICES FOR THIRD PARTY SOFTWARE THAT MAY BE CONTAINED ' +
-    `IN PORTIONS OF THE ${String(project.topLevelWorkspace.manifest.raw.name)
-      .toUpperCase()
-      .replace(/-/g, ' ')} PRODUCT.\n\n`
+    `IN PORTIONS OF FLOCON WEB SERVER PRODUCT.\n\n`
 
   for (const [licenseKey, packageMap] of manifestsByLicense.entries()) {
     disclaimer += '-----\n\n'
