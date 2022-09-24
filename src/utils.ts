@@ -148,7 +148,9 @@ export const getSortedPackages = async (
     throw new Error('--recursive=false is not supported.')
   }
   if (packagesToSkip.size !== 0) {
-    throw new Error('Following flocon-trpg packages are not found. Renamed or removed?: ' + JSON.stringify([...packagesToSkip]));
+    throw new Error(
+      'Following flocon-trpg packages are not found. Renamed or removed?: ' + JSON.stringify([...packagesToSkip])
+    )
   }
 
   const sortedDescriptors = miscUtils.sortMap(storedDescriptors, [
@@ -165,6 +167,9 @@ export const getSortedPackages = async (
     if (!identHash) continue
     const pkg = project.storedPackages.get(identHash)
     if (!pkg) continue
+    if (pkg.scope === 'flocon-trpg' && pkg.name === 'servers') {
+      continue
+    }
 
     const { descriptorHash } = structUtils.isVirtualDescriptor(descriptor)
       ? structUtils.devirtualizeDescriptor(descriptor)
