@@ -1,0 +1,9 @@
+{
+  "name": "@flocon-trpg/api-server",
+  "dependencies": {
+    "socket.io": "^4.5.2"
+  },
+  "devDependencies": {
+    "chalk": "^5.0.1"
+  }
+}
