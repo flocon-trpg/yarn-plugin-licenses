@@ -7,7 +7,7 @@ This forked plugin can generate licenses of dependencies in [@flocon-trpg/server
 ## Install
 
 ```
-yarn plugin import https://raw.githubusercontent.com/flocon-trpg/yarn-plugin-licenses/v0.8.1/bundles/@yarnpkg/plugin-licenses.js
+yarn plugin import https://raw.githubusercontent.com/flocon-trpg/yarn-plugin-licenses/v0.8.2/bundles/@yarnpkg/plugin-licenses.js
 ```
 
 ## Usage, Testing, Publishing
