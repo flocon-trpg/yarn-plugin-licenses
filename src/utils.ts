@@ -8,7 +8,8 @@ import {
   structUtils,
   miscUtils,
   formatUtils,
-  IdentHash
+  IdentHash,
+  Linker
 } from '@yarnpkg/core'
 import { PortablePath, ppath, npath, Filename } from '@yarnpkg/fslib'
 import { resolveLinker } from './linkers'
@@ -28,6 +29,16 @@ export const pluginRootDir: PortablePath =
 type PackageName = {
   scope: string | null
   name: string
+}
+
+const readFilePromise = (linker: ReturnType<typeof resolveLinker>, path: PortablePath) => {
+  return linker.fs.readFilePromise(path, 'utf8').catch((e: Error) => {
+    // Prevents errors like "Error: ENOENT: no such file or directory, open 'SOME_DIR\.yarn\unplugged\@next-swc-android-arm-eabi-npm-12.3.1-27d8113023\node_modules\@next\swc-android-arm-eabi\package.json'" when non-android environments
+    if (e.message.includes('no such file or directory')) {
+      return null
+    }
+    throw e
+  })
 }
 
 /**
@@ -60,9 +71,11 @@ export const getTree = async (
     const packagePath = await linker.getPackagePath(project, pkg)
     if (packagePath === null) continue
 
-    const packageManifest: ManifestWithLicenseInfo = JSON.parse(
-      await linker.fs.readFilePromise(ppath.join(packagePath, Filename.manifest), 'utf8')
-    )
+    const path = ppath.join(packagePath, Filename.manifest)
+    const file = await readFilePromise(linker, path)
+    if (file === null) continue
+
+    const packageManifest: ManifestWithLicenseInfo = JSON.parse(file)
 
     const { license, url, vendorName, vendorUrl } = getLicenseInfoFromManifest(packageManifest)
 
@@ -346,9 +359,11 @@ export const getDisclaimer = async (
     const packagePath = await linker.getPackagePath(project, pkg)
     if (packagePath === null) continue
 
-    const packageManifest: ManifestWithLicenseInfo = JSON.parse(
-      await linker.fs.readFilePromise(ppath.join(packagePath, Filename.manifest), 'utf8')
-    )
+    const path = ppath.join(packagePath, Filename.manifest)
+    const file = await readFilePromise(linker, path)
+    if (file === null) continue
+
+    const packageManifest: ManifestWithLicenseInfo = JSON.parse(file)
 
     const directoryEntries = await linker.fs.readdirPromise(packagePath, {
       withFileTypes: true
@@ -364,7 +379,8 @@ export const getDisclaimer = async (
 
     if (!licenseFilename) continue
 
-    const licenseText = await linker.fs.readFilePromise(ppath.join(packagePath, licenseFilename), 'utf8')
+    const licenseText = await readFilePromise(linker, ppath.join(packagePath, licenseFilename))
+    if (licenseText === null) continue
 
     const noticeFilename = files.find((filename): boolean => {
       const lower = filename.toLowerCase()
@@ -373,7 +389,7 @@ export const getDisclaimer = async (
 
     let noticeText
     if (noticeFilename) {
-      noticeText = await linker.fs.readFilePromise(ppath.join(packagePath, noticeFilename), 'utf8')
+      noticeText = await readFilePromise(linker, ppath.join(packagePath, noticeFilename))
     }
 
     const licenseKey = noticeText ? `${licenseText}\n\nNOTICE\n\n${noticeText}` : licenseText
